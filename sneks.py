@@ -7,7 +7,7 @@
 
 import argparse
 from collections import namedtuple
-from itertools import chain
+from itertools import chain, product
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
 
@@ -22,11 +22,54 @@ Prism = namedtuple('Prism', ['lead', 'inner'])
 def is_state_physical(state, cyclic = False):
     return True #TODO
 
+# Enumerates all possible solutions. Returns a generator of all states
+#   physical: require no collisions?
+#   cyclic: are cycles considered symmetric?
+#   reverse: are reversals considered symmetric?
+#   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
+def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
+    yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+
+# Recursive backtracker to enumerate all possible states
+#   prefix: a prefix to generate from
+#   curr_len: used to track current length
+# curr_len is redundant as this can be deduced from prefix, but this saves calls to len(prefix)
+# EXAMPLES:
+#   __enumerate(11, '', 0, False, False, False, False) will yield 4**11 times
+#   __enumerate(11, '0123', 4, False, False, False, False) will yield 4**7 times
+#       and will yield only states which match '0123*******'
+# TODO backtracker doesn't step out early enough and checks too many states
+def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, chiral=False, cyclic=False):
+    if curr_len == n:
+        state = normalize(prefix, reverse, chiral, cyclic)
+        if state == prefix:
+            if physical:
+                if is_state_physical(state, cyclic):
+                    yield state
+                else:
+                    return
+            else:
+                yield state
+        else:
+            return
+    else:
+        yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
+        yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
+        yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
+        yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+
+
+
+
 # Takes in a string state and returns the lexicographically minimum symmetric state
 #   state: string state
 #   cyclic: are cycles considered symmetric?
 #   reverse: are reversals considered symmetric?
-#   chiral: are chiral (left vs right, i.e., 1 vs 3) considered symmetric?
+#   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
+# EXAMPLES
+#   normalize('010322',True,True,True) => # '010223' -- reverse then cycle left by 3
+#   normalize('03000000',True,True,True) => # '00000001' -- chiral then cycle left by 2
+#   normalize('03000000',False,False,False) => # '03000000' -- always the identity
 def normalize(state, reverse=False, chiral=False, cyclic=False):
     len_state = len(state)
     states = [state]
@@ -45,7 +88,7 @@ def normalize(state, reverse=False, chiral=False, cyclic=False):
             map(
                 lambda st: map(lambda i: st[i:]+st[:i], range(len_state)),
                 states))
-    return list(states)
+    return min(states)
 
 
 
