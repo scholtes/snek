@@ -11,8 +11,34 @@ from itertools import chain, product
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
 
+# ================ PREDEFINED OBJECTS ================
 Point = namedtuple('Point', ['x', 'y', 'z'])
 Prism = namedtuple('Prism', ['lead', 'inner'])
+FLIP = {
+    '+x': '-x',
+    '+y': '-y',
+    '+z': '-z',
+    '-x': '+x',
+    '-y': '+y',
+    '-z': '+z',
+}
+FNTP = {
+    '+x': Point(1,0,0),
+    '+y': Point(0,1,0),
+    '+z': Point(0,0,1),
+    '-x': Point(-1,0,0),
+    '-y': Point(0,-1,0),
+    '-z': Point(0,0,-1),
+}
+CYCLES = {
+    '+x': ('+y','+z','-y','-z'),
+    '+y': ('+z','+x','-z','-x'),
+    '+z': ('+x','+y','-x','-y'),
+    '-x': ('+z','+y','-z','-y'),
+    '-y': ('+x','+z','-x','-z'),
+    '-z': ('+y','+x','-y','-x'),
+}
+# ====================================================
 
 
 # Takes in a state and returns whether the state has no collisions
@@ -20,7 +46,57 @@ Prism = namedtuple('Prism', ['lead', 'inner'])
 #   cyclic: if true then function returns true only if state is both
 #           without collisions and forms a closed loop
 def is_state_physical(state, cyclic = False):
+    li_state = str_to_list_int(state)
+    cells = {}
+    curr_point = Point(0,0,0)
+    curr_prism = Prism('+x','-y')
+    for rule in li_state:
+        # ===== COLLISION CHECK =====
+        if curr_point not in cells:
+            # No prisms have entered the current cell
+            cells[curr_point] = [curr_prism]
+        elif len(cells[curr_point]) >= 2:
+            # The current cell is already occupied by 2 prisms
+            return False
+        elif __prisms_collide(curr_prism, cells[curr_point][0]):
+            # The current cell is occupied by a prism that collides with the new one
+            return False
+        else:
+            # The current cell is occupied by a prism but there is room for the new one
+            cells[curr_point].append(curr_prism)
+        # ===========================
+        # Compute successor permutation
+        diff_point = __face_name_to_point(curr_prism.lead)
+        succ_point = Point(
+            curr_point.x + diff_point.x,
+            curr_point.y + diff_point.y,
+            curr_point.z + diff_point.z
+        )
+        # Compute successor orientation
+        succ_prism = Prism(FLIP[curr_prism.inner], FLIP[curr_prism.lead])
+        succ_prism = __rotate(succ_prism, rule)
+        # Increment current
+        curr_point = succ_point
+        curr_prism = succ_prism
     return True #TODO
+
+def __prisms_collide(prism1, prism2):
+    return (not(
+        (prism1.lead == FLIP[prism2.lead] and prism1.inner == FLIP[prism2.inner])
+            or
+        (prism1.lead == FLIP[prism2.inner] and prism1.inner == FLIP[prism2.lead])
+    ))
+
+# E.g., '-y' => Point(0, -1, 0)
+def __face_name_to_point(face):
+    pt = FNTP[face]
+    return Point(pt.x, pt.y, pt.z)
+
+def __rotate(prism, rule):
+    cycle_pos = CYCLES[prism.inner].index(prism.lead)
+    new_lead = CYCLES[prism.inner][(cycle_pos+rule)%4]
+    return Prism(new_lead, prism.inner)
+
 
 # Enumerates all possible solutions. Returns a generator of all states
 #   physical: require no collisions?
@@ -91,10 +167,16 @@ def normalize(state, reverse=False, chiral=False, cyclic=False):
     return min(states)
 
 
-
-
 def list_int_to_str(list_state):
     return ''.join(map(lambda c: str(c), list_state))
 
 def str_to_list_int(state):
     return list(map(lambda c: int(c), state))
+
+
+
+# TODO actually use correctly
+if __name__ == '__main__':
+    states = list(enumerate_states(4, physical=True, reverse=True, chiral=True, cyclic=False))
+    print(len(states))
+    for state in states: print(state)
