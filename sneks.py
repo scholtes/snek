@@ -6,6 +6,7 @@
 # ==============================================================
 
 import argparse
+import sys
 from collections import namedtuple
 from itertools import chain, product
 
@@ -47,6 +48,7 @@ CYCLES = {
 #           without collisions and forms a closed loop
 def is_state_physical(state, cyclic = False):
     li_state = str_to_list_int(state)
+    li_state.append(-1) # This is so that we still do the last collision check
     cells = {}
     curr_point = Point(0,0,0)
     curr_prism = Prism('+x','-y')
@@ -65,6 +67,9 @@ def is_state_physical(state, cyclic = False):
             # The current cell is occupied by a prism but there is room for the new one
             cells[curr_point].append(curr_prism)
         # ===========================
+        # Break early if on augmented rule -1 (to do extra collision check)
+        if rule == -1:
+            break
         # Compute successor permutation
         diff_point = __face_name_to_point(curr_prism.lead)
         succ_point = Point(
@@ -78,7 +83,13 @@ def is_state_physical(state, cyclic = False):
         # Increment current
         curr_point = succ_point
         curr_prism = succ_prism
-    return True #TODO
+    if cyclic:
+        # It is cyclic if the current point is (0,-1,0)
+        # and the current leading face is +y.
+        # This is because the initial prism is at (0,0,0)
+        # and begins with an inner face of -y.
+        return curr_prism.lead == '+y' and curr_point == Point(0,-1,0)
+    return True
 
 def __prisms_collide(prism1, prism2):
     return (not(
@@ -177,6 +188,11 @@ def str_to_list_int(state):
 
 # TODO actually use correctly
 if __name__ == '__main__':
-    states = list(enumerate_states(4, physical=True, reverse=True, chiral=True, cyclic=False))
-    print(len(states))
-    for state in states: print(state)
+    count = 0
+    for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
+        count += 1
+        sys.stdout.write(f'{count}: {state}\n')
+        sys.stdout.flush()
+    #print(len(states))
+    #for state in states: print(state)
+    #print(is_state_physical('2222'))
