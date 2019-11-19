@@ -41,7 +41,7 @@ CYCLES = {
 }
 # ====================================================
 
-
+# ================== SOLVE STATES ====================
 # Takes in a state and returns whether the state has no collisions
 #   state:  string state, each element is '0' thru '3' ####<- YES, NO -> list of ints, each element is 0 thru 3
 #   cyclic: if true then function returns true only if state is both
@@ -107,8 +107,93 @@ def __rotate(prism, rule):
     cycle_pos = CYCLES[prism.inner].index(prism.lead)
     new_lead = CYCLES[prism.inner][(cycle_pos+rule)%4]
     return Prism(new_lead, prism.inner)
+# ====================================================
+
+# ================== DRAW STATES =====================
+CODE_BASE = ""
+with open("snekbase.scad", 'r+') as f: CODE_BASE = f.read()
+ROTATES = {
+    Prism("-x","-y"): (-0*90,-2*90,0),
+    Prism("-z","-y"): (-0*90,-3*90,0),
+    Prism("+x","-y"): (-0*90,-0*90,0),
+    Prism("+z","-y"): (-0*90,-1*90,0),
+    Prism("-z","-x"): (-1*90,-2*90,0),
+    Prism("+x","-z"): (-1*90,-3*90,0),
+    Prism("+z","+x"): (-1*90,-0*90,0),
+    Prism("-x","+z"): (-1*90,-1*90,0),
+    Prism("-x","+y"): (-2*90,-2*90,0),
+    Prism("-z","+y"): (-2*90,-3*90,0),
+    Prism("+x","+y"): (-2*90,-0*90,0),
+    Prism("+z","+y"): (-2*90,-1*90,0)
+}
+
+# Returns OpenSCAD code
+def draw_state(state,offset=Point(0,0,0),center=True):
+    li_state = str_to_list_int(state)
+    li_state.append(-1) # This is so that we still do the last collision check
+    curr_point = Point(0,0,0)
+    curr_prism = Prism('+x','-y')
+    code = ""
+    INDENT = ""
+    if center:
+        INDENT = " "*4
+    color0 = "blue"
+    color1 = "white"
+    r1,r2,r3 = 0,0,0 #TODO actually compute this somehow
+    s = 1
+    # For doing center logic
+    center_of_mass = Point(0,0,0)
+    for rule in li_state:
+        # ========== DRAW ===========
+        x,y,z = curr_point.x+offset.x, curr_point.y+offset.y, curr_point.z+offset.z
+        code += f'{INDENT}block({x},{y},{z},{r1},{r2},{r3},"{color0}","{color1}");\n'
+        # ===========================
+        # Break early if on augmented rule -1 (to do extra draw )
+        if rule == -1:
+            break
+        # Compute successor permutation
+        diff_point = __face_name_to_point(curr_prism.lead)
+        succ_point = Point(
+            curr_point.x + diff_point.x,
+            curr_point.y + diff_point.y,
+            curr_point.z + diff_point.z
+        )
+        # Compute successor orientation
+        succ_prism = Prism(FLIP[curr_prism.inner], FLIP[curr_prism.lead])
+        succ_prism = __rotate(succ_prism, rule)
+        # Increment current
+        curr_point = succ_point
+        curr_prism = succ_prism
+        # == Prepare for next draw ==
+        color0,color1 = color1,color0
+        r1,r2,r3 = __rotations_from_prism(curr_prism)
+        # ===========================
+        center_of_mass = Point(
+            center_of_mass.x + curr_point.x,
+            center_of_mass.y + curr_point.y,
+            center_of_mass.z + curr_point.z
+        )
+    if center:
+        count = len(state)
+        center_of_mass = Point(
+            center_of_mass.x/count,
+            center_of_mass.y/count,
+            center_of_mass.z/count
+        )
+        code = f"translate([{-center_of_mass.x},{-center_of_mass.y},{-center_of_mass.z}]) {{\n{code}}}"
+    return code
+
+# Says what angles to rotate a prism by from the initial
+def __rotations_from_prism(curr_prism):
+    if curr_prism in ROTATES:
+        return ROTATES[curr_prism]
+    else:
+        flipped_faces = Prism(curr_prism.inner, curr_prism.lead)
+        return ROTATES[flipped_faces]
+# ====================================================
 
 
+# ================ ENUMERATE STATES ==================
 # Enumerates all possible solutions. Returns a generator of all states
 #   physical: require no collisions?
 #   cyclic: are cycles considered symmetric?
@@ -183,16 +268,20 @@ def list_int_to_str(list_state):
 
 def str_to_list_int(state):
     return list(map(lambda c: int(c), state))
+# ====================================================
 
 
 
 # TODO actually use correctly
 if __name__ == '__main__':
-    count = 0
-    for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
-        count += 1
-        sys.stdout.write(f'{count}: {state}\n')
-        sys.stdout.flush()
+    #count = 0
+    #for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
+    #    count += 1
+    #    sys.stdout.write(f'{count}: {state}\n')
+    #    sys.stdout.flush()
+
     #print(len(states))
     #for state in states: print(state)
     #print(is_state_physical('2222'))
+
+    print(draw_state("01321132312"))
