@@ -204,7 +204,7 @@ def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fals
     if not cyclic:
         yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
     else:
-        yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+        yield from __dedup_cyclic_states(__enumerate_states(n,'',0,physical,reverse,chiral,cyclic),reverse,chiral)
 
 
 
@@ -236,6 +236,19 @@ def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, 
         yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
         yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
 
+# This normalization has to be done post-discovery instead of pre
+# For reasons...
+def __dedup_cyclic_states(states, reverse, chiral):
+    used = set([])
+    for state in states:
+        if state not in used:
+            yield state
+        for aug_rule in range(4):
+            aug_state = state + str(aug_rule)
+            cycles = map(lambda i: (aug_state[i:]+aug_state[:i])[:-1], range(len(aug_state)))
+            for cycle in cycles:
+                used = used.union(set(__normalize_list(cycle, reverse, chiral)))
+
 
 
 
@@ -247,6 +260,10 @@ def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, 
 # EXAMPLES
 #   normalize('03000000',False,False) => # '03000000' -- always the identity
 def normalize(state, reverse=False, chiral=False):
+    return min(__normalize_list(state,reverse,chiral))
+
+
+def __normalize_list(state, reverse=False, chiral=False):
     len_state = len(state)
     states = [state]
     if reverse:
@@ -267,7 +284,7 @@ def normalize(state, reverse=False, chiral=False):
                 lambda st: map(lambda i: st[i:]+st[:i], range(len_state)),
                 states))
     '''
-    return min(states)
+    return states
 
 
 def list_int_to_str(list_state):
@@ -289,8 +306,8 @@ def str_to_list_int(state):
 def draw_all_solutions_in_grid(sols):
     count = 0
     code = CODE_BASE
-    for x in range(-3, 4):
-        for y in range(-3, 4):
+    for x in range(-4, 5):
+        for y in range(-4, 5):
             code += draw_state(sols[count], Point(4*x,4*y,0))
             count += 1
             if count >= len(sols):
@@ -303,11 +320,13 @@ def draw_all_solutions_in_grid(sols):
 
 # TODO actually use correctly
 if __name__ == '__main__':
-    count = 0
-    for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
-        count += 1
-        sys.stdout.write(f'{count}: {state}\n')
-        sys.stdout.flush()
+    #count = 0
+    #for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
+    #    count += 1
+    #    sys.stdout.write(f'{count}: {state}\n')
+    #    #if count %1000==0: print(f'\r{count}',end='')
+    #    sys.stdout.flush()
+    #print(f"\r{count}")
 
     #print(len(states))
     #for state in states: print(state)
@@ -316,10 +335,13 @@ if __name__ == '__main__':
     #print(draw_state("01321132312"))
 
     # All 41 cyclic solutions for Rubik's mini
-    #sols = ["00101230102","00120031002","00120113302","00120120013","00120120331","00120121112","00123212102",
-    #"00123332302","00130320112","00130323331","00131102302","00210120212","01012301022","01101233013","01101233331",
-    #"01101310332","01101311113","01102130113","01102133332","01123033113","01123211013","01123211331","01131013023",
-    #"01131331123","01131333321","01132302102","01133121031","01133121113","01201203231","01201211123","01201213321",
-    #"01210123202","01210220232","01213231123","01213233321","01311121331","01311323113","01321111231","01321112132",
-    #"01321132312","01321133213"]
-    #draw_all_solutions_in_grid(sols)
+    sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
+    "00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
+    "00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
+    "00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
+    "01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
+    "01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
+    "01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
+    "01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
+    "11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
+    draw_all_solutions_in_grid(sols)
