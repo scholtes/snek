@@ -10,6 +10,7 @@ import sys
 import pyperclip
 from collections import namedtuple
 from itertools import chain, product
+from math import asin, pi
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
 
@@ -318,6 +319,53 @@ def draw_all_solutions_in_grid(sols):
     pyperclip.copy(code)
     return code
 
+def draw_all_solutions_in_line(sols):
+    count = 0
+    code = CODE_BASE
+    code += "\n"
+    code += "\ntranslate([(-82*$t+9)*4, 0, 0]){"
+    code += "\nrotate([-$t*360*70/5,0,0]){\n"
+    for x in range(70):
+        if x == 0:
+            code += "if($t < 0.3333) {"
+        if x == 24:
+            code += "}if(0.3333 < $t && $t < 0.666) { "
+        if x == 48:
+            code += "}if(0.6666 < $t) { "
+        code += draw_state(sols[x], Point(4*x,0,0))
+    code += "\n}\n}\n}\n"
+    print(code)
+    pyperclip.copy(code)
+    return code
+
+def draw_all_solutions_at_center(sols):
+    def _f_(x):
+        return (asin(2*x-1)+pi/2)/pi
+    def _fff_(x):
+        return _f_(_f_(x))
+    count = 0
+    code = CODE_BASE
+    code += "\nfunction fancy_rot(t) = (1-cos(t*180))/2;"
+    for x in range(70):
+        if x == 0:
+            code += f"if($t < {_fff_((x+1)/70)}) {{"
+        elif x != 69:
+            code += f"}}if({_fff_((x)/70)} < $t && $t <= {_fff_((x+1)/70)}) {{"
+        else:
+            code += f"}}if({_fff_((x)/70)} < $t) {{"
+        code += "\nrotate([0,0,-360*2*fancy_rot(fancy_rot(fancy_rot($t)))]){\n"
+        code += draw_state(sols[x])
+        code += "\n}"
+        code += f'\ncolor("#99ff33"){{translate([0,-3,3]){{scale(0.05){{rotate([90,0,90]){{text("{sols[x]}");}}}}}}}}\n'
+        code += f'\ncolor("#99ff33"){{translate([0,-3,4]){{scale(0.05){{rotate([90,0,90]){{text("Solution {x+1}");}}}}}}}}\n'
+    code += "\n}\n"
+    print(code)
+    pyperclip.copy(code)
+    return code
+
+
+
+
 # TODO actually use correctly
 if __name__ == '__main__':
     #count = 0
@@ -344,4 +392,4 @@ if __name__ == '__main__':
     "01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
     "01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
     "11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
-    draw_all_solutions_in_grid(sols)
+    draw_all_solutions_at_center(sols)
