@@ -7,6 +7,7 @@
 
 import argparse
 import sys
+import pyperclip
 from collections import namedtuple
 from itertools import chain, product
 
@@ -200,7 +201,12 @@ def __rotations_from_prism(curr_prism):
 #   reverse: are reversals considered symmetric?
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
-    yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+    if not cyclic:
+        yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+    else:
+        yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+
+
 
 # Recursive backtracker to enumerate all possible states
 #   prefix: a prefix to generate from
@@ -213,7 +219,7 @@ def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fals
 # TODO backtracker doesn't step out early enough and checks too many states
 def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, chiral=False, cyclic=False):
     if curr_len == n:
-        state = normalize(prefix, reverse, chiral, cyclic)
+        state = normalize(prefix, reverse, chiral)
         if state == prefix:
             if physical:
                 if is_state_physical(state, cyclic):
@@ -239,10 +245,8 @@ def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, 
 #   reverse: are reversals considered symmetric?
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 # EXAMPLES
-#   normalize('010322',True,True,True) => # '010223' -- reverse then cycle left by 3
-#   normalize('03000000',True,True,True) => # '00000001' -- chiral then cycle left by 2
-#   normalize('03000000',False,False,False) => # '03000000' -- always the identity
-def normalize(state, reverse=False, chiral=False, cyclic=False):
+#   normalize('03000000',False,False) => # '03000000' -- always the identity
+def normalize(state, reverse=False, chiral=False):
     len_state = len(state)
     states = [state]
     if reverse:
@@ -255,11 +259,14 @@ def normalize(state, reverse=False, chiral=False, cyclic=False):
             map(
                 lambda st: (st, ''.join(map(lambda c: {'0':'0','1':'3','2':'2','3':'1'}[c], st))),
                 states))
+    '''
+    # This ain't work
     if cyclic:
         states = chain.from_iterable(
             map(
                 lambda st: map(lambda i: st[i:]+st[:i], range(len_state)),
                 states))
+    '''
     return min(states)
 
 
@@ -272,16 +279,47 @@ def str_to_list_int(state):
 
 
 
+
+
+
+
+
+
+
+def draw_all_solutions_in_grid(sols):
+    count = 0
+    code = CODE_BASE
+    for x in range(-3, 4):
+        for y in range(-3, 4):
+            code += draw_state(sols[count], Point(4*x,4*y,0))
+            count += 1
+            if count >= len(sols):
+                break
+        if count >= len(sols):
+                break
+    print(code)
+    pyperclip.copy(code)
+    return code
+
 # TODO actually use correctly
 if __name__ == '__main__':
-    #count = 0
-    #for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
-    #    count += 1
-    #    sys.stdout.write(f'{count}: {state}\n')
-    #    sys.stdout.flush()
+    count = 0
+    for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
+        count += 1
+        sys.stdout.write(f'{count}: {state}\n')
+        sys.stdout.flush()
 
     #print(len(states))
     #for state in states: print(state)
     #print(is_state_physical('2222'))
 
-    print(draw_state("01321132312"))
+    #print(draw_state("01321132312"))
+
+    # All 41 cyclic solutions for Rubik's mini
+    #sols = ["00101230102","00120031002","00120113302","00120120013","00120120331","00120121112","00123212102",
+    #"00123332302","00130320112","00130323331","00131102302","00210120212","01012301022","01101233013","01101233331",
+    #"01101310332","01101311113","01102130113","01102133332","01123033113","01123211013","01123211331","01131013023",
+    #"01131331123","01131333321","01132302102","01133121031","01133121113","01201203231","01201211123","01201213321",
+    #"01210123202","01210220232","01213231123","01213233321","01311121331","01311323113","01321111231","01321112132",
+    #"01321132312","01321133213"]
+    #draw_all_solutions_in_grid(sols)
