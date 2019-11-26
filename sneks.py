@@ -113,7 +113,7 @@ def __rotate(prism, rule):
 
 # ================== DRAW STATES =====================
 CODE_BASE = ""
-with open("snekbase.scad", 'r+') as f: CODE_BASE = f.read()
+with open("_snekbase.scad", 'r+') as f: CODE_BASE = f.read()
 ROTATES = {
     Prism("-x","-y"): (-0*90,-2*90,0),
     Prism("-z","-y"): (-0*90,-3*90,0),
@@ -364,10 +364,49 @@ def draw_all_solutions_at_center(sols):
     return code
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Rubik's Mini Snake processor")
+    parser.add_argument("--physical", type=str, help="Returns true if the given state is physically realizable")
+    parser.add_argument("--draw", type=str, help="Prints OpenSCAD code to draw the given state")
+    parser.add_argument("--solve", type=int, help="Counts the number of solutions for a Rubik's snake with SOLVE number prisms")
+    parser.add_argument("--cyclic", action="store_true", help="Only return cyclic solutions and remove cyclic duplicates")
+    parser.add_argument("--reverse", action="store_true", help="Remove duplicates under reverse symmetry")
+    parser.add_argument("--chiral", action="store_true", help="Remove duplicates under chiral symmetry")
+    parser.add_argument("--list", action="store_true", help="Makes --solve return all solutions instead of counting")
+    parser.add_argument("--no-macro", action="store_true", help="Exclude the macro definitions from --draw. Useful for concatenating multiple states into 1 OpenSCAD file")
+    parser.add_argument("--copy", action="store_true", help="Makes --draw copy output to clipboard")
+    args = parser.parse_args()
 
+    if args.physical:
+        print(is_state_physical(args.physical, args.cyclic))
+
+    elif args.draw:
+        openscad = draw_state(args.draw)
+        if not args.no_macro:
+            openscad = CODE_BASE + openscad
+        print(openscad)
+        if args.copy:
+            pyperclip.copy(openscad)
+
+    elif args.solve:
+        states = enumerate_states(args.solve-1, physical=True, reverse=args.reverse, chiral=args.chiral, cyclic=args.cyclic)
+        if args.list:
+            for state in states:
+                print(state)
+        else:
+            count = 0
+            for state in states:
+                count += 1
+                if count %1000==0 or args.cyclic: print(f'\r{count}', end='')
+                sys.stdout.flush()
+            print(f'\r{count}')
+
+    else:
+        print("Must use one of --physical, --draw, or --solve. See --help for options")
 
 # TODO actually use correctly
 if __name__ == '__main__':
+    main()
     #count = 0
     #for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
     #    count += 1
@@ -380,16 +419,19 @@ if __name__ == '__main__':
     #for state in states: print(state)
     #print(is_state_physical('2222'))
 
-    #print(draw_state("01321132312"))
+    #code = CODE_BASE 
+    #code += draw_state("00013130000")
+    #pyperclip.copy(code)
+    #print(code)
 
     # All 41 cyclic solutions for Rubik's mini
-    sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
-    "00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
-    "00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
-    "00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
-    "01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
-    "01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
-    "01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
-    "01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
-    "11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
-    draw_all_solutions_at_center(sols)
+    #sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
+    #"00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
+    #"00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
+    #"00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
+    #"01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
+    #"01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
+    #"01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
+    #"01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
+    #"11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
+    #draw_all_solutions_at_center(sols)
