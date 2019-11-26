@@ -1,9 +1,21 @@
-# Garrett Scholtes
+# =================================================================
+# Rubik's Snake solver
 # November 2019
 # 
-# TODO replicate results below???
-#   http://blog.ylett.com/2011/09/rubiks-snake-combinations.html
-# ==============================================================
+# See all closed solutions for the Rubik's Mini Snake below!
+#  +-----------------------------------------------+
+#  |  https://www.youtube.com/watch?v=EBAmBFG7DCg  |
+#  |                    + + +                      |
+#  |  https://www.youtube.com/watch?v=HPOI3N_4PEM  |
+#  +-----------------------------------------------+
+# 
+# =================================================================
+# TODO 
+#   - replicate results from here???
+#     http://blog.ylett.com/2011/09/rubiks-snake-combinations.html
+#   - recursive backtrack to skip early failing solutions
+#   - implement on GPU
+# =================================================================
 
 import argparse
 import sys
@@ -93,6 +105,7 @@ def is_state_physical(state, cyclic = False):
         return curr_prism.lead == '+y' and curr_point == Point(0,-1,0)
     return True
 
+# return whether two prisms (given to be in the same cell) collide
 def __prisms_collide(prism1, prism2):
     return (not(
         (prism1.lead == FLIP[prism2.lead] and prism1.inner == FLIP[prism2.inner])
@@ -105,6 +118,7 @@ def __face_name_to_point(face):
     pt = FNTP[face]
     return Point(pt.x, pt.y, pt.z)
 
+# applies all the rotation cycles to a prism given a rule
 def __rotate(prism, rule):
     cycle_pos = CYCLES[prism.inner].index(prism.lead)
     new_lead = CYCLES[prism.inner][(cycle_pos+rule)%4]
@@ -255,11 +269,13 @@ def __dedup_cyclic_states(states, reverse, chiral):
 
 # Takes in a string state and returns the lexicographically minimum symmetric state
 #   state: string state
-#   cyclic: are cycles considered symmetric?
 #   reverse: are reversals considered symmetric?
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 # EXAMPLES
 #   normalize('03000000',False,False) => # '03000000' -- always the identity
+#   normalize('03000000',False,True) =>  # '03000000' -- switch 3 for 1
+#   normalize('03000000',True,False) =>  # '00000030' -- reverse
+#   normalize('03000000',True,True) =>   # '00000010' -- reverse and switch 3 for 1
 def normalize(state, reverse=False, chiral=False):
     return min(__normalize_list(state,reverse,chiral))
 
@@ -303,6 +319,10 @@ def str_to_list_int(state):
 
 
 
+# ====================================================
+# =================== GARBAGE DUMP ===================
+# ----- bunch of one-off crap used in animations -----
+# ----- that does not really belong here -------------
 
 def draw_all_solutions_in_grid(sols):
     count = 0
@@ -363,6 +383,39 @@ def draw_all_solutions_at_center(sols):
     pyperclip.copy(code)
     return code
 
+# Garbage that used to be in __main__:
+#   count = 0
+#   for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
+#       count += 1
+#       sys.stdout.write(f'{count}: {state}\n')
+#       #if count %1000==0: print(f'\r{count}',end='')
+#       sys.stdout.flush()
+#   print(f"\r{count}")
+#   
+#   print(len(states))
+#   for state in states: print(state)
+#   print(is_state_physical('2222'))
+#   
+#   code = CODE_BASE 
+#   code += draw_state("00013130000")
+#   pyperclip.copy(code)
+#   print(code)
+#   
+#    All 41 cyclic solutions for Rubik's mini
+#   sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
+#   "00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
+#   "00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
+#   "00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
+#   "01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
+#   "01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
+#   "01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
+#   "01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
+#   "11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
+#   draw_all_solutions_at_center(sols)
+
+# ================= END GARBAGE DUMP =================
+# ====================================================
+
 
 def main():
     parser = argparse.ArgumentParser(description="Rubik's Mini Snake processor")
@@ -404,34 +457,7 @@ def main():
     else:
         print("Must use one of --physical, --draw, or --solve. See --help for options")
 
-# TODO actually use correctly
+
+
 if __name__ == '__main__':
     main()
-    #count = 0
-    #for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
-    #    count += 1
-    #    sys.stdout.write(f'{count}: {state}\n')
-    #    #if count %1000==0: print(f'\r{count}',end='')
-    #    sys.stdout.flush()
-    #print(f"\r{count}")
-
-    #print(len(states))
-    #for state in states: print(state)
-    #print(is_state_physical('2222'))
-
-    #code = CODE_BASE 
-    #code += draw_state("00013130000")
-    #pyperclip.copy(code)
-    #print(code)
-
-    # All 41 cyclic solutions for Rubik's mini
-    #sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
-    #"00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
-    #"00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
-    #"00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
-    #"01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
-    #"01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
-    #"01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
-    #"01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
-    #"11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
-    #draw_all_solutions_at_center(sols)
