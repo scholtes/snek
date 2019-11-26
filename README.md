@@ -13,7 +13,7 @@ This script can:
 
 Requires python 3.6.x or greater and one additional library:
 
-```
+```ruby
 $ pip install pyperclip
 ```
 
@@ -52,14 +52,14 @@ optional arguments:
 
 Count all closed-loop (cyclic) solutions of the Rubik's Mini Snake (12 pieces) and remove duplicate solutions (under all symmetries):
 
-```
+```ruby
 $ python sneks.py --solve 12 --cyclic --reverse --chiral
 70
 ```
 
 Or list them out instead:
 
-```
+```ruby
 $ python sneks.py --solve 12 --cyclic --reverse --chiral --list
 00002200002
 00012300032
@@ -74,7 +74,7 @@ $ python sneks.py --solve 12 --cyclic --reverse --chiral --list
 
 Check if a solution is physically realizable (does not self-intersect):
 
-```
+```ruby
 $ python sneks.py --physical 00200200200
 True
 $ python sneks.py --physical 11111111111
@@ -85,7 +85,7 @@ False
 
 Or check if a solution is both cyclic and does not self-intersect:
 
-```
+```ruby
 $ python sneks.py --physical 00200200200 --cyclic
 True
 $ python sneks.py --physical 11111111111 --cyclic
@@ -96,7 +96,7 @@ False
 
 Visualize solutions in 3D by generating OpenSCAD code:
 
-```
+```ruby
 $ python sneks.py --draw 00101200303
 module block(x1,x2,x3,r1,r2,r3,c0,c1) {
     translate([x1+0.5,x2+0.5,x3+0.5]) {
@@ -114,7 +114,7 @@ module block(x1,x2,x3,r1,r2,r3,c0,c1) {
 
 In lieu of `xclip` use `--copy` to copy OpenSCAD output to clipboard:
 
-```
+```ruby
 $ python sneks.py --draw 00101200303 --copy
 ```
 
@@ -122,7 +122,7 @@ $ python sneks.py --draw 00101200303 --copy
 
 Take the example above:
 
-```
+```ruby
 $ python sneks.py --draw 00101200303
 ```
 
@@ -136,7 +136,7 @@ Use *Preview* (F5) instead of *Render* (F6) to keep color information. Play with
 
 In OpenSCAD, use the special `$t` variable that ranges from `0` to `1` to prepare to animate your figure. For example:
 
-```
+```ruby
 rotate([0,0,360*$t])
 ```
 
