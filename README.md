@@ -128,4 +128,25 @@ $ python sneks.py --draw 00101200303
 
 Copy and Paste the output into OpenSCAD to draw the solution:
 
-![drawing-sample](examples/drawing-sample.png | width=100)
+<img src="examples/drawing-sample.png" width="300px"/>
+
+Use *Preview* (F5) instead of *Render* (F6) to keep color information. Play with settings to enable Black background and remove axes.
+
+# Animating solutions
+
+In OpenSCAD, use the special `$t` variable that ranges from `0` to `1` to prepare to animate your figure. For example:
+
+```
+rotate([0,0,360*$t])
+```
+
+Then animate via the menu:
+
+1. `View`
+2. `Animate`
+
+The `FPS` value shows how many frames per second OpenSCAD will try to preview while animating. The `Steps` section shows how many total frames it will render. For example if `Steps = 10`, then `$t` will take on values `0, 0.1, 0.2, 0.3, ..., 1`.
+
+<img src="examples/animated-sample.gif" width="300px"/>
+
+Save your OpenSCAD code to a file. For example, `path/to/code.scad`. Then, click `Dump Pictures` checkbox and OpenSCAD will begin saving frames to disk in the same location that the code is saved to. You do not need to reset `$t` to zero, OpenSCAD will intelligently draw the frames in the correct order.
