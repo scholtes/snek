@@ -150,3 +150,15 @@ The `FPS` value shows how many frames per second OpenSCAD will try to preview wh
 <img src="examples/animated-sample.gif" width="300px"/>
 
 Save your OpenSCAD code to a file. For example, `path/to/code.scad`. Then, click `Dump Pictures` checkbox and OpenSCAD will begin saving frames to disk in the same location that the code is saved to. You do not need to reset `$t` to zero, OpenSCAD will intelligently draw the frames in the correct order.
+
+Use `ffmpeg` to stich the frames together into a video:
+
+```ruby
+ffmpeg -framerate 30 -i path/to/frame%05d.png animated.mp4
+```
+
+Or use ImageMagick's `convert` (or `magick --convert`) to make gifs:
+
+```ruby
+convert 'path/to/frame*.png' -set delay 1x30 animated.gif
+```
