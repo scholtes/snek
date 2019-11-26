@@ -68,25 +68,3 @@
 68: 11313312132
 69: 11331133113
 70: 12132312132
-
-
-
-
-Number of cyclic and non-cyclic solutions (removing duplicates under all other symmetries)
-Cyclic solutions are counted n times!! Can math this out without requiring a re-simulation (subtract (n-1)*(#cyclic solutions))
-0: 1
-1: 3
-2: 7
-3: 24
-4: 70
-5: 258
-6: 880
-7: 3247
-8: 11737
-9: 43411
-10: 158703
-11: 584716 <- Rubik's Mini Snake
-12: 2141843
-13: 7870093
-
-Number of cyclic solutions (removing duplicates under all symmetries)
