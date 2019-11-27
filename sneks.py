@@ -25,6 +25,7 @@ from itertools import chain, product
 from math import asin, pi
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
+_GLOBAL_PHYSICAL_CHECKS_ = 0
 
 # ================ PREDEFINED OBJECTS ================
 Point = namedtuple('Point', ['x', 'y', 'z'])
@@ -53,6 +54,11 @@ CYCLES = {
     '-y': ('+x','+z','-x','-z'),
     '-z': ('+y','+x','-y','-x'),
 }
+
+# Used for generator control
+class BacktrackRequest(Exception):
+    def __init__(self, depth):
+        self.depth = depth
 # ====================================================
 
 # ================== SOLVE STATES ====================
@@ -61,22 +67,30 @@ CYCLES = {
 #   cyclic: if true then function returns true only if state is both
 #           without collisions and forms a closed loop
 def is_state_physical(state, cyclic = False):
+    global _GLOBAL_PHYSICAL_CHECKS_
+    _GLOBAL_PHYSICAL_CHECKS_ += 1
     li_state = str_to_list_int(state)
     li_state.append(-1) # This is so that we still do the last collision check
+    prism_count = len(li_state)
     cells = {}
     curr_point = Point(0,0,0)
     curr_prism = Prism('+x','-y')
-    for rule in li_state:
+    for depth, rule in enumerate(li_state):
+        # ==== CYCLIC EARLY-FAIL ====
+        if cyclic:
+            dist = abs(curr_point.x) + abs(curr_point.y) + abs(curr_point.z)
+            if dist+depth > prism_count or dist+dist >= prism_count:
+                raise BacktrackRequest(depth)
         # ===== COLLISION CHECK =====
         if curr_point not in cells:
             # No prisms have entered the current cell
             cells[curr_point] = [curr_prism]
         elif len(cells[curr_point]) >= 2:
             # The current cell is already occupied by 2 prisms
-            return False
+            raise BacktrackRequest(depth)
         elif __prisms_collide(curr_prism, cells[curr_point][0]):
             # The current cell is occupied by a prism that collides with the new one
-            return False
+            raise BacktrackRequest(depth)
         else:
             # The current cell is occupied by a prism but there is room for the new one
             cells[curr_point].append(curr_prism)
@@ -102,7 +116,8 @@ def is_state_physical(state, cyclic = False):
         # and the current leading face is +y.
         # This is because the initial prism is at (0,0,0)
         # and begins with an inner face of -y.
-        return curr_prism.lead == '+y' and curr_point == Point(0,-1,0)
+        if not(curr_prism.lead == '+y' and curr_point == Point(0,-1,0)):
+            raise BacktrackRequest(depth)
     return True
 
 # return whether two prisms (given to be in the same cell) collide
@@ -237,19 +252,33 @@ def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, 
         state = normalize(prefix, reverse, chiral)
         if state == prefix:
             if physical:
-                if is_state_physical(state, cyclic):
-                    yield state
-                else:
-                    return
+                is_state_physical(state, cyclic)
+                yield state
             else:
                 yield state
         else:
             return
     else:
-        yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+        try:
+            yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
+        except BacktrackRequest as br:
+            if br.depth <= curr_len:
+                raise br
+        try:
+            yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
+        except BacktrackRequest as br:
+            if br.depth <= curr_len:
+                raise br
+        try:
+            yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
+        except BacktrackRequest as br:
+            if br.depth <= curr_len:
+                raise br
+        try:
+            yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+        except BacktrackRequest as br:
+            if br.depth <= curr_len:
+                raise br
 
 # This normalization has to be done post-discovery instead of pre
 # For reasons...
@@ -461,3 +490,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    print(f"DEBUG :: is_state_physical called {_GLOBAL_PHYSICAL_CHECKS_} times")
