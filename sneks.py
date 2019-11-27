@@ -79,7 +79,7 @@ def is_state_physical(state, cyclic = False):
         # ==== CYCLIC EARLY-FAIL ====
         if cyclic:
             dist = abs(curr_point.x) + abs(curr_point.y) + abs(curr_point.z)
-            if dist+depth > prism_count or dist+dist >= prism_count:
+            if dist+depth > prism_count:
                 raise BacktrackRequest(depth)
         # ===== COLLISION CHECK =====
         if curr_point not in cells:
