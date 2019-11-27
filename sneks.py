@@ -232,22 +232,24 @@ def __rotations_from_prism(curr_prism):
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
     if not cyclic:
-        yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+        yield from __enumerate_states(n,not chiral,'',0,physical,reverse,chiral,cyclic)
     else:
-        yield from __dedup_cyclic_states(__enumerate_states(n,'',0,physical,reverse,chiral,cyclic),reverse,chiral)
+        yield from __dedup_cyclic_states(__enumerate_states(n,not chiral,'',0,physical,reverse,chiral,cyclic),reverse,chiral)
 
 
 
 # Recursive backtracker to enumerate all possible states
 #   prefix: a prefix to generate from
 #   curr_len: used to track current length
+#   leading_1: used to skip branches that are known to be not normalized
 # curr_len is redundant as this can be deduced from prefix, but this saves calls to len(prefix)
 # EXAMPLES:
 #   __enumerate(11, '', 0, False, False, False, False) will yield 4**11 times
 #   __enumerate(11, '0123', 4, False, False, False, False) will yield 4**7 times
 #       and will yield only states which match '0123*******'
 # TODO backtracker doesn't step out early enough and checks too many states
-def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, chiral=False, cyclic=False):
+def __enumerate_states(n, leading_1, prefix='', curr_len=0, 
+        physical=False, reverse=False, chiral=False, cyclic=False,):
     if curr_len == n:
         state = normalize(prefix, reverse, chiral)
         if state == prefix:
@@ -260,22 +262,24 @@ def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, 
             return
     else:
         try:
-            yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
+            yield from __enumerate_states(n, leading_1, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
         except BacktrackRequest as br:
             if br.depth <= curr_len:
                 raise br
         try:
-            yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
+            yield from __enumerate_states(n, True, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
         except BacktrackRequest as br:
             if br.depth <= curr_len:
                 raise br
         try:
-            yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
+            yield from __enumerate_states(n, leading_1, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
         except BacktrackRequest as br:
             if br.depth <= curr_len:
                 raise br
         try:
-            yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+            if leading_1:
+                yield from __enumerate_states(n, leading_1, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+            # Else we know this branch is not normal so why bother trying
         except BacktrackRequest as br:
             if br.depth <= curr_len:
                 raise br
