@@ -162,3 +162,9 @@ Or use ImageMagick's `convert` (or `magick --convert`) to make gifs:
 ```ruby
 convert 'path/to/frame*.png' -set delay 1x30 animated.gif
 ```
+
+# Futures
+
+TODO:
+
+- **Implement backtracking** - the enumeration process right now does not back out at the rule that it fails at. E.g., if 02220000000 fails, we still check 02220000001 instead of skipping forward to 02230000000. See branch feature-recursive-backtracking for a sample implementation of a backtracker (leaves some details to be desired).
