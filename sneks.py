@@ -23,6 +23,7 @@ import pyperclip
 from collections import namedtuple
 from itertools import chain, product
 from math import asin, pi
+from random import shuffle
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
 
@@ -383,6 +384,50 @@ def draw_all_solutions_at_center(sols):
     pyperclip.copy(code)
     return code
 
+# maxdepth: maximum backtracking depth
+def randomsnek():
+    snek = ''
+    choices = ['1', '2', '3']
+    while True:
+        shuffle(choices)
+        found = False
+        for choice in choices:
+            if is_state_physical(snek+choice):
+                snek += choice
+                found = True
+                break
+        if not found:
+            return snek
+
+# maxdepth: maximum backtracking depth
+def randsnek(maxdepth = 0):
+    snek = ''
+    i_snek = []
+    all_choices = []
+    choices = ['0', '1', '2', '3']
+    sneklen = 0
+    curpos = 0
+    while True:
+        if curpos >= sneklen:
+            shuffle(choices)
+            all_choices.append(choices.copy())
+            cur_i = 0
+        else:
+            cur_i = i_snek[curpos]
+        curchoices = all_choices[curpos]
+        found = False
+        for i in range(cur_i,4):
+            choice = curchoices[i]
+            if is_state_physical(snek+choice):
+                snek += choice
+                i_snek.append(i)
+                found = True
+                curpos += 1
+                break
+        if not found:
+            return snek
+
+
 # Garbage that used to be in __main__:
 #   count = 0
 #   for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
@@ -460,4 +505,30 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+
+    #snek = randomsnek()
+    #print(snek)
+    #code = CODE_BASE 
+    #code += draw_state(snek)
+    #pyperclip.copy(code)
+    ##print(code)
+    #print(is_state_physical(snek, cyclic=True))
+
+    #lensum = 0
+    #count = 0
+    #while True:
+    #    count += 1
+    #    snek = randomsnek(1)
+    #    lensum += len(snek)
+    #    print(f"\r{count}: {lensum/count}",end="")
+    
+    maxlen = 0
+    while True:
+        snek = randomsnek()
+        if len(snek) > maxlen:
+            maxlen = len(snek)
+            code = CODE_BASE 
+            code += draw_state(snek)
+            pyperclip.copy(code)
+            print(f"{snek}...")
