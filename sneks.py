@@ -23,8 +23,10 @@ import pyperclip
 from collections import namedtuple
 from itertools import chain, product
 from math import asin, pi
+from numpy import base_repr
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
+GLOBAL_CHECKS = 0
 
 # ================ PREDEFINED OBJECTS ================
 Point = namedtuple('Point', ['x', 'y', 'z'])
@@ -60,23 +62,31 @@ CYCLES = {
 #   state:  string state, each element is '0' thru '3' ####<- YES, NO -> list of ints, each element is 0 thru 3
 #   cyclic: if true then function returns true only if state is both
 #           without collisions and forms a closed loop
-def is_state_physical(state, cyclic = False):
+def is_state_physical(state, n, cyclic = False):
+    global GLOBAL_CHECKS
+    GLOBAL_CHECKS += 1
     li_state = str_to_list_int(state)
     li_state.append(-1) # This is so that we still do the last collision check
     cells = {}
     curr_point = Point(0,0,0)
     curr_prism = Prism('+x','-y')
+    fail_at = -1
     for rule in li_state:
+        # ==== CYCLIC EARLY-FAIL ====
+        if cyclic:
+            remaining = n-fail_at
+            if 2*abs(curr_point.x)>remaining or 2*abs(curr_point.y)>remaining+1 or 2*abs(curr_point.z)>remaining:
+                return(False,fail_at)
         # ===== COLLISION CHECK =====
         if curr_point not in cells:
             # No prisms have entered the current cell
             cells[curr_point] = [curr_prism]
         elif len(cells[curr_point]) >= 2:
             # The current cell is already occupied by 2 prisms
-            return False
+            return (False,fail_at)
         elif __prisms_collide(curr_prism, cells[curr_point][0]):
             # The current cell is occupied by a prism that collides with the new one
-            return False
+            return (False,fail_at)
         else:
             # The current cell is occupied by a prism but there is room for the new one
             cells[curr_point].append(curr_prism)
@@ -97,13 +107,14 @@ def is_state_physical(state, cyclic = False):
         # Increment current
         curr_point = succ_point
         curr_prism = succ_prism
+        fail_at += 1
     if cyclic:
         # It is cyclic if the current point is (0,-1,0)
         # and the current leading face is +y.
         # This is because the initial prism is at (0,0,0)
         # and begins with an inner face of -y.
-        return curr_prism.lead == '+y' and curr_point == Point(0,-1,0)
-    return True
+        return (curr_prism.lead == '+y' and curr_point == Point(0,-1,0), n-1)
+    return (True,n-1)
 
 # return whether two prisms (given to be in the same cell) collide
 def __prisms_collide(prism1, prism2):
@@ -125,88 +136,6 @@ def __rotate(prism, rule):
     return Prism(new_lead, prism.inner)
 # ====================================================
 
-# ================== DRAW STATES =====================
-CODE_BASE = ""
-with open("_snekbase.scad", 'r+') as f: CODE_BASE = f.read()
-ROTATES = {
-    Prism("-x","-y"): (-0*90,-2*90,0),
-    Prism("-z","-y"): (-0*90,-3*90,0),
-    Prism("+x","-y"): (-0*90,-0*90,0),
-    Prism("+z","-y"): (-0*90,-1*90,0),
-    Prism("-z","-x"): (-1*90,-2*90,0),
-    Prism("+x","-z"): (-1*90,-3*90,0),
-    Prism("+z","+x"): (-1*90,-0*90,0),
-    Prism("-x","+z"): (-1*90,-1*90,0),
-    Prism("-x","+y"): (-2*90,-2*90,0),
-    Prism("-z","+y"): (-2*90,-3*90,0),
-    Prism("+x","+y"): (-2*90,-0*90,0),
-    Prism("+z","+y"): (-2*90,-1*90,0)
-}
-
-# Returns OpenSCAD code
-def draw_state(state,offset=Point(0,0,0),center=True):
-    li_state = str_to_list_int(state)
-    li_state.append(-1) # This is so that we still do the last collision check
-    curr_point = Point(0,0,0)
-    curr_prism = Prism('+x','-y')
-    code = ""
-    INDENT = ""
-    if center:
-        INDENT = " "*4
-    color0 = "blue"
-    color1 = "white"
-    r1,r2,r3 = 0,0,0 #TODO actually compute this somehow
-    s = 1
-    # For doing center logic
-    center_of_mass = Point(0,0,0)
-    for rule in li_state:
-        # ========== DRAW ===========
-        x,y,z = curr_point.x+offset.x, curr_point.y+offset.y, curr_point.z+offset.z
-        code += f'{INDENT}block({x},{y},{z},{r1},{r2},{r3},"{color0}","{color1}");\n'
-        # ===========================
-        # Break early if on augmented rule -1 (to do extra draw )
-        if rule == -1:
-            break
-        # Compute successor permutation
-        diff_point = __face_name_to_point(curr_prism.lead)
-        succ_point = Point(
-            curr_point.x + diff_point.x,
-            curr_point.y + diff_point.y,
-            curr_point.z + diff_point.z
-        )
-        # Compute successor orientation
-        succ_prism = Prism(FLIP[curr_prism.inner], FLIP[curr_prism.lead])
-        succ_prism = __rotate(succ_prism, rule)
-        # Increment current
-        curr_point = succ_point
-        curr_prism = succ_prism
-        # == Prepare for next draw ==
-        color0,color1 = color1,color0
-        r1,r2,r3 = __rotations_from_prism(curr_prism)
-        # ===========================
-        center_of_mass = Point(
-            center_of_mass.x + curr_point.x,
-            center_of_mass.y + curr_point.y,
-            center_of_mass.z + curr_point.z
-        )
-    if center:
-        count = len(state)
-        center_of_mass = Point(
-            center_of_mass.x/count,
-            center_of_mass.y/count,
-            center_of_mass.z/count
-        )
-        code = f"translate([{-center_of_mass.x},{-center_of_mass.y},{-center_of_mass.z}]) {{\n{code}}}"
-    return code
-
-# Says what angles to rotate a prism by from the initial
-def __rotations_from_prism(curr_prism):
-    if curr_prism in ROTATES:
-        return ROTATES[curr_prism]
-    else:
-        flipped_faces = Prism(curr_prism.inner, curr_prism.lead)
-        return ROTATES[flipped_faces]
-# ====================================================
 
 
 # ================ ENUMERATE STATES ==================
@@ -216,10 +145,12 @@ def __rotations_from_prism(curr_prism):
 #   reverse: are reversals considered symmetric?
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
+    global GLOBAL_CHECKS
+    GLOBAL_CHECKS = 0
     if not cyclic:
-        yield from __enumerate_states(n,'',0,physical,reverse,chiral,cyclic)
+        yield from __enumerate_states(n,physical,reverse,chiral,cyclic)
     else:
-        yield from __dedup_cyclic_states(__enumerate_states(n,'',0,physical,reverse,chiral,cyclic),reverse,chiral)
+        yield from __dedup_cyclic_states(__enumerate_states(n,physical,reverse,chiral,cyclic),reverse,chiral)
 
 
 
@@ -232,24 +163,49 @@ def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fals
 #   __enumerate(11, '0123', 4, False, False, False, False) will yield 4**7 times
 #       and will yield only states which match '0123*******'
 # TODO backtracker doesn't step out early enough and checks too many states
-def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, chiral=False, cyclic=False):
-    if curr_len == n:
-        state = normalize(prefix, reverse, chiral)
-        if state == prefix:
-            if physical:
-                if is_state_physical(state, cyclic):
-                    yield state
-                else:
-                    return
-            else:
+#def __enumerate_states(n, prefix='', curr_len=0, physical=False, reverse=False, chiral=False, cyclic=False):
+#    if curr_len == n:
+#        state = normalize(prefix, reverse, chiral)
+#        if state == prefix:
+#            if physical:
+#                if is_state_physical(state, cyclic):
+#                    yield state
+#                else:
+#                    return
+#            else:
+#                yield state
+#        else:
+#            return
+#    else:
+#        yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
+#        yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
+#        yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
+#        yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+
+def __enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
+    i = 0
+    while i < 3*4**(n-1):
+        state = base_repr(i, 4).rjust(n, "0")
+        ### 3 check
+        p3 = state.index("3") if "3" in state else n
+        p1 = state.index("1") if "1" in state else n
+        if p3 < p1:
+            i = int((state[0:p3+1]).ljust(n,"0"),4) + 4**(n-1-p3)
+            continue
+        ### end 3 check
+        normed = normalize(state, reverse, chiral)
+        if state == normed:
+            result = is_state_physical(state, n, cyclic)
+            is_phyical = result[0]
+            offset = result[1]
+            if is_phyical:
                 yield state
+                i += 1
+            else:
+                i = int((state[0:offset+1]).ljust(n,"0"),4) + 4**(n-1-offset)
         else:
-            return
-    else:
-        yield from __enumerate_states(n, prefix+'0', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'1', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'2', curr_len+1, physical, reverse, chiral, cyclic)
-        yield from __enumerate_states(n, prefix+'3', curr_len+1, physical, reverse, chiral, cyclic)
+            i += 1;
+
 
 # This normalization has to be done post-discovery instead of pre
 # For reasons...
@@ -315,108 +271,6 @@ def str_to_list_int(state):
 
 
 
-
-
-
-
-# ====================================================
-# =================== GARBAGE DUMP ===================
-# ----- bunch of one-off crap used in animations -----
-# ----- that does not really belong here -------------
-
-def draw_all_solutions_in_grid(sols):
-    count = 0
-    code = CODE_BASE
-    for x in range(-4, 5):
-        for y in range(-4, 5):
-            code += draw_state(sols[count], Point(4*x,4*y,0))
-            count += 1
-            if count >= len(sols):
-                break
-        if count >= len(sols):
-                break
-    print(code)
-    pyperclip.copy(code)
-    return code
-
-def draw_all_solutions_in_line(sols):
-    count = 0
-    code = CODE_BASE
-    code += "\n"
-    code += "\ntranslate([(-82*$t+9)*4, 0, 0]){"
-    code += "\nrotate([-$t*360*70/5,0,0]){\n"
-    for x in range(70):
-        if x == 0:
-            code += "if($t < 0.3333) {"
-        if x == 24:
-            code += "}if(0.3333 < $t && $t < 0.666) { "
-        if x == 48:
-            code += "}if(0.6666 < $t) { "
-        code += draw_state(sols[x], Point(4*x,0,0))
-    code += "\n}\n}\n}\n"
-    print(code)
-    pyperclip.copy(code)
-    return code
-
-def draw_all_solutions_at_center(sols):
-    def _f_(x):
-        return (asin(2*x-1)+pi/2)/pi
-    def _fff_(x):
-        return _f_(_f_(x))
-    count = 0
-    code = CODE_BASE
-    code += "\nfunction fancy_rot(t) = (1-cos(t*180))/2;"
-    for x in range(70):
-        if x == 0:
-            code += f"if($t < {_fff_((x+1)/70)}) {{"
-        elif x != 69:
-            code += f"}}if({_fff_((x)/70)} < $t && $t <= {_fff_((x+1)/70)}) {{"
-        else:
-            code += f"}}if({_fff_((x)/70)} < $t) {{"
-        code += "\nrotate([0,0,-360*2*fancy_rot(fancy_rot(fancy_rot($t)))]){\n"
-        code += draw_state(sols[x])
-        code += "\n}"
-        code += f'\ncolor("#99ff33"){{translate([0,-3,3]){{scale(0.05){{rotate([90,0,90]){{text("{sols[x]}");}}}}}}}}\n'
-        code += f'\ncolor("#99ff33"){{translate([0,-3,4]){{scale(0.05){{rotate([90,0,90]){{text("Solution {x+1}");}}}}}}}}\n'
-    code += "\n}\n"
-    print(code)
-    pyperclip.copy(code)
-    return code
-
-# Garbage that used to be in __main__:
-#   count = 0
-#   for state in enumerate_states(11, physical=True, reverse=True, chiral=True, cyclic=True):
-#       count += 1
-#       sys.stdout.write(f'{count}: {state}\n')
-#       #if count %1000==0: print(f'\r{count}',end='')
-#       sys.stdout.flush()
-#   print(f"\r{count}")
-#   
-#   print(len(states))
-#   for state in states: print(state)
-#   print(is_state_physical('2222'))
-#   
-#   code = CODE_BASE 
-#   code += draw_state("00013130000")
-#   pyperclip.copy(code)
-#   print(code)
-#   
-#    All 41 cyclic solutions for Rubik's mini
-#   sols = ["00002200002","00012300032","00101200303","00101230102","00120031002","00120113302","00120120013",
-#   "00120120331","00120121112","00123002123","00123202303","00123212102","00123302101","00130013001","00130323013",
-#   "00130323331","00130331101","00132023203","00132031021","00132033023","00132111123","00132113321","00200200200",
-#   "00200210203","00200220202","00201210101","01101201101","01101233013","01101233331","01101303303","01101311031",
-#   "01101311113","01123033113","01123101123","01123103321","01123203101","01123211013","01123211331","01131013023",
-#   "01131021201","01131331123","01131333321","01132302102","01132332303","01133113303","01133121031","01133121113",
-#   "01201213321","01210123202","01210132023","01210203230","01213231123","01213233321","01213313023","01230201230",
-#   "01233231303","01233313203","01233321021","01303101303","01303133113","01311323113","02123202321","11113133331",
-#   "11121323331","11213233231","11213311331","11313311313","11313312132","11331133113","12132312132"]
-#   draw_all_solutions_at_center(sols)
-
-# ================= END GARBAGE DUMP =================
-# ====================================================
-
-
 def main():
     parser = argparse.ArgumentParser(description="Rubik's Mini Snake processor")
     parser.add_argument("--physical", type=str, help="Returns true if the given state is physically realizable")
@@ -431,7 +285,7 @@ def main():
     args = parser.parse_args()
 
     if args.physical:
-        print(is_state_physical(args.physical, args.cyclic))
+        print(is_state_physical(args.physical, len(args.physical), args.cyclic))
 
     elif args.draw:
         openscad = draw_state(args.draw)
@@ -460,4 +314,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    for n in range(2,13): #2,13
+        print(f"{2*n}: {len(list(enumerate_states(2*n-1, physical=True, reverse=True, chiral=True, cyclic=True)))} {GLOBAL_CHECKS}")
