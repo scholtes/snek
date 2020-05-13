@@ -189,9 +189,9 @@ def __enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fa
     YIELDS = 0
     while i < 3*4**(n-1):
         state = base_repr(i, 4).rjust(n, "0")
-        COUNTYDOO+=1
-        if COUNTYDOO % 1000 == 0:
-            print(f"\rchecking {state}... (hit: {YIELDS})", end='')
+        #COUNTYDOO+=1
+        #if COUNTYDOO % 10000 == 0:
+        #    print(f"\rchecking {state}... (hit: {YIELDS})", end='')
         ### 3 check
         p3 = state.index("3") if "3" in state else n
         p1 = state.index("1") if "1" in state else n
@@ -214,18 +214,47 @@ def __enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fa
             i += 1;
 
 
-# This normalization has to be done post-discovery instead of pre
-# For reasons...
 def __dedup_cyclic_states(states, reverse, chiral):
     used = set([])
+    COUNTY = 0
     for state in states:
-        if state not in used:
-            yield state
+        unique = True
         for aug_rule in range(4):
             aug_state = state + str(aug_rule)
             cycles = map(lambda i: (aug_state[i:]+aug_state[:i])[:-1], range(len(aug_state)))
             for cycle in cycles:
-                used = used.union(set(__normalize_list(cycle, reverse, chiral)))
+                for normal in set(__normalize_list(cycle, reverse, chiral)):
+                    if normal in used:
+                        unique = False
+                        break
+                if not unique:
+                    break
+            if not unique:
+                break
+        if unique:
+            COUNTY += 1
+            print(f"{state} ({COUNTY})")
+            used.add(state)
+            yield state
+
+# This normalization has to be done post-discovery instead of pre
+# For reasons...
+#def __dedup_cyclic_states(states, reverse, chiral):
+#    used = set([])
+#    COUNTY = 0
+#    for state in states:
+#        if state not in used:
+#            COUNTY += 1
+#            print(f"{state} ({COUNTY})")
+#            yield state
+#        for aug_rule in range(4):
+#            aug_state = state + str(aug_rule)
+#            cycles = map(lambda i: (aug_state[i:]+aug_state[:i])[:-1], range(len(aug_state)))
+#            #TIME_1 = time.clock()
+#            for cycle in cycles:
+#                used = used.union(set(__normalize_list(cycle, reverse, chiral)))
+#            #TIME_2 = time.clock()
+#            #print(f"YIELD: {TIME_2 - TIME_1} {len(used)}")
 
 
 
@@ -322,5 +351,5 @@ def main():
 
 if __name__ == '__main__':
     #main()
-    for n in range(8,13): #2,13
+    for n in range(2,13): #2,13
         print(f"\r            {' '*(2*n-1)}\r{2*n}: {len(list(enumerate_states(2*n-1, physical=True, reverse=True, chiral=True, cyclic=True)))}")
