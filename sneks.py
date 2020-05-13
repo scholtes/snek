@@ -24,9 +24,10 @@ from collections import namedtuple
 from itertools import chain, product
 from math import asin, pi
 from numpy import base_repr
+import time
 
 #list(map(lambda c: int(c), '00103201110')) # => [0, 0, 1, 0, ..., 1, 0]
-GLOBAL_CHECKS = 0
+# # # # # GLOBAL_CHECKS = 0
 
 # ================ PREDEFINED OBJECTS ================
 Point = namedtuple('Point', ['x', 'y', 'z'])
@@ -63,8 +64,8 @@ CYCLES = {
 #   cyclic: if true then function returns true only if state is both
 #           without collisions and forms a closed loop
 def is_state_physical(state, n, cyclic = False):
-    global GLOBAL_CHECKS
-    GLOBAL_CHECKS += 1
+    # # # # # global GLOBAL_CHECKS
+    # # # # # GLOBAL_CHECKS += 1
     li_state = str_to_list_int(state)
     li_state.append(-1) # This is so that we still do the last collision check
     cells = {}
@@ -145,8 +146,8 @@ def __rotate(prism, rule):
 #   reverse: are reversals considered symmetric?
 #   chiral: are chiral (left vs right, i.e., '1' vs '3') considered symmetric?
 def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
-    global GLOBAL_CHECKS
-    GLOBAL_CHECKS = 0
+    # # # # # global GLOBAL_CHECKS
+    # # # # # GLOBAL_CHECKS = 0
     if not cyclic:
         yield from __enumerate_states(n,physical,reverse,chiral,cyclic)
     else:
@@ -184,8 +185,13 @@ def enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fals
 
 def __enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=False):
     i = 0
+    COUNTYDOO = -1
+    YIELDS = 0
     while i < 3*4**(n-1):
         state = base_repr(i, 4).rjust(n, "0")
+        COUNTYDOO+=1
+        if COUNTYDOO % 1000 == 0:
+            print(f"\rchecking {state}... (hit: {YIELDS})", end='')
         ### 3 check
         p3 = state.index("3") if "3" in state else n
         p1 = state.index("1") if "1" in state else n
@@ -200,6 +206,7 @@ def __enumerate_states(n, physical=False, reverse=False, chiral=False, cyclic=Fa
             offset = result[1]
             if is_phyical:
                 yield state
+                YIELDS += 1
                 i += 1
             else:
                 i = int((state[0:offset+1]).ljust(n,"0"),4) + 4**(n-1-offset)
@@ -315,5 +322,5 @@ def main():
 
 if __name__ == '__main__':
     #main()
-    for n in range(2,13): #2,13
-        print(f"{2*n}: {len(list(enumerate_states(2*n-1, physical=True, reverse=True, chiral=True, cyclic=True)))} {GLOBAL_CHECKS}")
+    for n in range(8,13): #2,13
+        print(f"\r            {' '*(2*n-1)}\r{2*n}: {len(list(enumerate_states(2*n-1, physical=True, reverse=True, chiral=True, cyclic=True)))}")
